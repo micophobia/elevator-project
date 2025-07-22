@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор Лифта</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <h1>Симулятор Лифта</h1>
+            
+            <!-- Панель управления -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="floors">Количество этажей:</label>
+                    <select id="floors" v-model="selectedFloors" @change="resetSimulation">
+                        <option value="5">5 этажей</option>
+                        <option value="10">10 этажей</option>
+                        <option value="15">15 этажей</option>
+                        <option value="20">20 этажей</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="elevators">Количество лифтов:</label>
+                    <select id="elevators" v-model="selectedElevators" @change="resetSimulation">
+                        <option value="1">1 лифт</option>
+                        <option value="2">2 лифта</option>
+                        <option value="3">3 лифта</option>
+                    </select>
+                </div>
+                
+                <button class="reset-btn" @click="resetSimulation">Сбросить</button>
+            </div>
+            
+            <!-- Информационная панель -->
+            <div class="info-panel">
+                <div class="queue-info">
+                    <h3>Очередь вызовов:</h3>
+                    <div class="queue-list">
+                        <span v-if="callQueue.length === 0" class="no-calls">Нет вызовов</span>
+                        <span v-for="call in callQueue" :key="call.id" class="queue-item">
+                            Этаж {{ call.floor }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="elevator-status">
+                    <h3>Статус лифтов:</h3>
+                    <div v-for="(elevator, index) in elevators" :key="index" class="elevator-info">
+                        <span class="elevator-label">Лифт {{ index + 1 }}:</span>
+                        <span class="elevator-state" :class="elevator.state">
+                            <span v-if="elevator.state === 'idle'">Этаж {{ elevator.currentFloor }} (Ожидание)</span>
+                            <span v-else-if="elevator.state === 'moving'">
+                                Этаж {{ elevator.currentFloor }} → {{ elevator.targetFloor }}
+                            </span>
+                            <span v-else-if="elevator.state === 'loading'">
+                                Этаж {{ elevator.currentFloor }} (Посадка/Высадка)
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Шахта лифта -->
+            <div class="elevator-shaft">
+                <div class="building">
+                    <!-- Этажи -->
+                    <div v-for="floor in floors" :key="floor" 
+                         class="floor" 
+                         :class="{ 'ground-floor': floor === 1 }">
+                        
+                        <div class="floor-number">{{ floor }}</div>
+                        
+                        <!-- Кнопка вызова (не на первом этаже) -->
+                        <div v-if="floor > 1" class="call-section">
+                            <button class="call-btn" 
+                                    :class="{ 'active': hasCallOnFloor(floor) }"
+                                    @click="callElevator(floor)"
+                                    :disabled="hasCallOnFloor(floor)">
+                                Вызов
+                            </button>
+                            
+                            <!-- Пассажир на этаже -->
+                            <div v-if="hasPassengerOnFloor(floor)" class="passenger-waiting">
+                                👤
+                            </div>
+                        </div>
+                        
+                        <!-- Лифты -->
+                        <div class="elevator-area">
+                            <div v-for="(elevator, elevatorIndex) in elevators" 
+                                 :key="elevatorIndex"
+                                 class="elevator-column">
+                                
+                                <div v-if="elevator.currentFloor === floor" 
+                                     class="elevator"
+                                     :class="[elevator.state, { 'doors-open': elevator.doorsOpen }]"
+                                     :style="elevatorStyle(elevator)">
+                                    
+                                    <!-- Двери лифта -->
+                                    <div class="elevator-doors">
+                                        <div class="door door-left" :class="{ 'open': elevator.doorsOpen }"></div>
+                                        <div class="door door-right" :class="{ 'open': elevator.doorsOpen }"></div>
+                                    </div>
+                                    
+                                    <!-- Индикатор направления -->
+                                    <div class="direction-indicator" v-if="elevator.state === 'moving'">
+                                        <span v-if="elevator.direction === 'up'">↑</span>
+                                        <span v-if="elevator.direction === 'down'">↓</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+
