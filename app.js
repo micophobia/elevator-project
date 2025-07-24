@@ -145,6 +145,8 @@ createApp({
         async moveElevator(elevator) {
             if (elevator.queue.length === 0) {
                 elevator.state = 'idle';
+                // Проверяем, есть ли необработанные вызовы в глобальной очереди
+                await this.checkForUnassignedCalls();
                 return;
             }
             
@@ -177,6 +179,9 @@ createApp({
             }
             
             elevator.state = 'idle';
+            
+            // После завершения работы проверяем необработанные вызовы
+            await this.checkForUnassignedCalls();
         },
         
         // Проверка попутчиков по пути вниз к первому этажу
@@ -329,6 +334,26 @@ createApp({
             this.callQueue = this.callQueue.filter(call => call.id !== callId);
         },
         
+        // Проверка необработанных вызовов в глобальной очереди
+        async checkForUnassignedCalls() {
+            // Находим вызовы, которые не назначены ни на один лифт
+            const unassignedCalls = this.callQueue.filter(call => {
+                return !this.elevators.some(elevator => 
+                    elevator.queue.some(queueCall => queueCall.id === call.id)
+                );
+            });
+            
+            // Назначаем необработанные вызовы на свободные лифты
+            for (const call of unassignedCalls) {
+                const idleElevator = this.elevators.find(elevator => elevator.state === 'idle');
+                if (idleElevator) {
+                    idleElevator.queue.push(call);
+                    this.moveElevator(idleElevator);
+                    break; // Обрабатываем по одному вызову за раз
+                }
+            }
+        },
+        
         // Проверка наличия вызова на этаже
         hasCallOnFloor(floor) {
             return this.callQueue.some(call => call.floor === floor);
@@ -352,4 +377,3 @@ createApp({
         }
     }
 }).mount('#app');
-
